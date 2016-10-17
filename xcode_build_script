@@ -1,0 +1,66 @@
+#!/bin/sh
+
+# Export pList
+
+if [ -f "exportPlist.plist" ]
+then
+	rm "exportPlist.plist"
+fi
+
+echo "<?xml version=\"1.0\" encoding=\"UTF-8\"?>
+<!DOCTYPE plist PUBLIC \"-//Apple//DTD PLIST 1.0//EN\" \"http://www.apple.com/DTDs/PropertyList-1.0.dtd\">
+<plist version=\"1.0\">
+<dict>
+        <key>teamID</key>
+        <string>${TEAM_ID}</string>
+        <key>method</key>
+        <string>app-store</string>
+        <key>uploadSymbols</key>
+        <true/>
+</dict>
+</plist>" >> exportplist.plist
+
+# UPDATE BUILD NUMBER
+
+xcrun agvtool new-version -all $BUILD_NUMBER
+
+
+# VALIDATE FILES
+
+if [ -f "{$APP_NAME}.xcarchive" ]
+then
+	echo "Archive removed"
+	rm -rf "${APP_NAME}.xcarchive"
+fi
+
+if [ -f "${APP_NAME}.ipa" ]
+then
+	echo "IPA removed"
+	rm -rf "${APP_NAME}.ipa"
+fi
+
+# ARCHIVING
+
+xcodebuild archive \
+-workspace "${APP_NAME}.xcworkspace" \
+-configuration $CONFIGUATION \
+-scheme Swish \
+-archivePath "${APP_NAME}.xcarchive"
+
+# EXPORTING
+
+xcodebuild -exportArchive \
+ -archivePath "${APP_NAME}.xcarchive" \
+ -exportPath $OUTPUT_DIRECTORY \
+ -exportOptionsPlist exportPlist.plist
+
+# Submit to Itunes Connect
+
+~/altool \
+--upload-app \
+-f build/${APP_NAME}.ipa \
+--type ios \
+--username ${USERNAME} --password ${PASSWORD}
+
+
+
